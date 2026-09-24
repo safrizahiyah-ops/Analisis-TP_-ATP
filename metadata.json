@@ -1,0 +1,8 @@
+{
+  "name": "PERTAMA – Perumus Tujuan Pembelajaran Madrasah",
+  "description": "Aplikasi analisis Capaian Pembelajaran (CP) dan perumusan Tujuan Pembelajaran (TP) madrasah terintegrasi Taksonomi Bloom, SOLO, Kurikulum Berbasis Cinta (KBC), dan sumber keislaman.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
