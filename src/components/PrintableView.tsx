@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { HasilPerumusanTP, FormInputData } from '../types';
 import { BLOOM_INFO, SOLO_INFO } from '../utils/constants';
 import { ensureAlurTujuanPembelajaran } from '../utils/atpHelper';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { exportToWordDocx } from '../utils/docxExport';
+import { copyFullDocumentToClipboard } from '../utils/clipboardHelper';
+import { Printer, ArrowLeft, Download, Copy, Check } from 'lucide-react';
 
 interface PrintableViewProps {
   input: FormInputData;
@@ -15,8 +17,39 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
   data,
   onBack,
 }) => {
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
+  const [copied, setCopied] = useState(false);
   const atpList = ensureAlurTujuanPembelajaran(data, input);
   const totalAtpJP = atpList.reduce((acc, curr) => acc + (Number(curr.alokasiJP) || 0), 0);
+
+  const handleDownloadWord = async () => {
+    try {
+      setIsExportingDocx(true);
+      const blob = await exportToWordDocx(input, data);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const filename = `PERTAMA_TP_ATP_${input.mataPelajaran.replace(/\s+/g, '_')}_${input.jenjang}_${input.faseKelas.replace(/\s+/g, '_')}.docx`;
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export docx:', err);
+      alert('Gagal mengekspor dokumen Word.');
+    } finally {
+      setIsExportingDocx(false);
+    }
+  };
+
+  const handleCopyDoc = async () => {
+    const res = await copyFullDocumentToClipboard(input, data);
+    if (res.success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
 
   const getPancaCintaText = (kode: string) => {
     const kbc = data.integrasiKBC.find((k) => k.kodeTP === kode);
@@ -27,7 +60,7 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
   return (
     <div className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6">
       {/* Top Floating Controls (Hidden on Print) */}
-      <div className="max-w-4xl mx-auto mb-6 flex items-center justify-between print:hidden">
+      <div className="max-w-4xl mx-auto mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <button
           onClick={onBack}
           className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl shadow-xs hover:bg-slate-50 transition"
@@ -36,13 +69,37 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
           <span>Kembali ke Editor</span>
         </button>
 
-        <button
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-emerald-800 rounded-xl shadow-md hover:bg-emerald-900 transition"
-        >
-          <Printer className="w-4 h-4" />
-          <span>Cetak / Simpan ke PDF Sekarang</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Word Download */}
+          <button
+            onClick={handleDownloadWord}
+            disabled={isExportingDocx}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-emerald-950 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-xl shadow-xs transition"
+            title="Unduh dokumen dalam format Word (.docx)"
+          >
+            <Download className="w-4 h-4 text-emerald-800" />
+            <span>{isExportingDocx ? 'Mengekspor...' : 'Unduh Word (.docx)'}</span>
+          </button>
+
+          {/* Copy Doc */}
+          <button
+            onClick={handleCopyDoc}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl shadow-xs transition"
+            title="Salin dokumen lengkap siap tempel di Word/Docs"
+          >
+            {copied ? <Check className="w-4 h-4 text-emerald-700" /> : <Copy className="w-4 h-4 text-amber-800" />}
+            <span>{copied ? 'Tersalin!' : 'Salin Dokumen'}</span>
+          </button>
+
+          {/* Print / PDF */}
+          <button
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-emerald-800 rounded-xl shadow-md hover:bg-emerald-900 transition"
+          >
+            <Printer className="w-4 h-4 text-amber-300" />
+            <span>Cetak / Simpan ke PDF Sekarang</span>
+          </button>
+        </div>
       </div>
 
       {/* Printable Sheet */}
@@ -59,7 +116,7 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
             Dokumen Perencanaan Pembelajaran: Analisis Capaian Pembelajaran (CP) dan Perumusan Tujuan Pembelajaran (TP)
           </p>
           <p className="text-xs text-slate-500 italic mt-0.5">
-            Terintegrasi Taksonomi Bloom Revisi, SOLO, Kurikulum Berbasis Cinta (KBC), dan Sumber Keislaman
+            Terintegrasi Taksonomi Bloom Revisi, SOLO, dan Kurikulum Berbasis Cinta (KBC)
           </p>
         </div>
 
@@ -297,46 +354,6 @@ export const PrintableView: React.FC<PrintableViewProps> = ({
                   <td className="p-2 border-r border-slate-200 font-medium align-top">{kbc.rumusan}</td>
                   <td className="p-2 border-r border-slate-200 align-top">{kbc.perilakuTeramati}</td>
                   <td className="p-2 align-top">{kbc.penerapanKehidupan}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Section I: Keislaman */}
-        <div className="mb-8">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-900 mb-2 border-b border-emerald-800 pb-1">
-            I. Integrasi Al-Qur'an, Hadis, & Kitab Kuning
-          </h3>
-          <p className="text-[11px] text-rose-700 font-semibold mb-2">
-            * Verifikasi teks Arab, nomor ayat, dan terjemahan dengan Qur'an Kemenag (quran.kemenag.go.id) atau kitab asli sebelum digunakan.
-          </p>
-          <table className="w-full text-left border-collapse text-xs border border-slate-300">
-            <thead>
-              <tr className="bg-slate-100 border-b border-slate-300">
-                <th className="p-2 border-r border-slate-300 w-1/4">Sumber & Rujukan</th>
-                <th className="p-2 border-r border-slate-300 w-1/3">Teks Arab & Makna</th>
-                <th className="p-2 border-r border-slate-300 text-center w-24">Integrasi</th>
-                <th className="p-2">Keterkaitan Materi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {data.integrasiKeislaman.map((s, i) => (
-                <tr key={i}>
-                  <td className="p-2 border-r border-slate-200 font-bold align-top">
-                    {s.jenisSumber} - {s.rujukan}
-                    <span className="block font-normal text-slate-500 mt-1">Keyakinan: {s.tingkatKeyakinan}</span>
-                  </td>
-                  <td className="p-2 border-r border-slate-200 align-top">
-                    {s.teksArab && (
-                      <p dir="rtl" className="font-amiri text-sm mb-1 text-right">
-                        {s.teksArab}
-                      </p>
-                    )}
-                    <p className="italic text-slate-700">"{s.terjemahanAtauMakna}"</p>
-                  </td>
-                  <td className="p-2 border-r border-slate-200 text-center font-semibold align-top">{s.jenisIntegrasi}</td>
-                  <td className="p-2 align-top">{s.keterkaitan}</td>
                 </tr>
               ))}
             </tbody>

@@ -81,8 +81,8 @@ export const TabRekap: React.FC<TabRekapProps> = ({ data, input, onNavigateToATP
           <p className="text-base font-bold text-slate-800 mt-1">{data.pemilihanLevelKognitif.rentangBloom || 'C2 - C4'}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Sumber Keislaman</span>
-          <p className="text-xl font-extrabold text-teal-800 mt-1">{data.integrasiKeislaman.length} Rujukan</p>
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Integrasi KBC</span>
+          <p className="text-xl font-extrabold text-teal-800 mt-1">{data.integrasiKBC.length} Panca Cinta</p>
         </div>
       </div>
 

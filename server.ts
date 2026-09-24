@@ -62,11 +62,7 @@ Pola: Peserta didik mampu + KKO + kompetensi/materi + konteks/kondisi + kriteria
 H. INTEGRASI KBC
 Setelah TP kognitif selesai, integrasikan Panca Cinta secara proporsional: Cinta Allah dan Rasul-Nya, Cinta Ilmu, Cinta Diri dan Sesama, Cinta Lingkungan, Cinta Tanah Air. Pilih hanya nilai yang relevan; jangan memaksakan semuanya ke setiap TP. Rumusan harus memuat perilaku yang dapat diamati, sikap yang dikembangkan, keterampilan sosial, dan penerapan dalam kehidupan. Hindari rumusan tidak terukur seperti 'Peserta didik mampu mencintai Allah'.
 
-I. INTEGRASI AL-QUR'AN / HADIS / KITAB KUNING
-Cari sumber yang relevan dengan konsep, nilai, konteks, karakter, atau penerapan materi. Klasifikasikan setiap sumber sebagai 'Integrasi konseptual' (hubungan langsung dengan gagasan keilmuan) atau 'Integrasi nilai' (mendukung nilai/karakter). Jangan mengklaim ayat sebagai 'ayat matematika' jika hanya berkaitan nilai.
-ATURAN KEJUJURAN MUTLAK: Jangan mengarang teks Arab, nomor ayat, terjemahan, hadis, perawi, atau kutipan kitab. Jika tidak yakin pada teks Arab persis, kosongkan field teks Arab dan cukup cantumkan rujukan (nama surah dan nomor ayat) beserta ringkasan makna. Beri tingkat keyakinan (tinggi/sedang/rendah) pada setiap sumber. Jika tidak ditemukan sumber yang benar-benar relevan, nyatakan dengan jujur.
-
-J. ALUR TUJUAN PEMBELAJARAN (ATP) DAN ALOKASI WAKTU
+I. ALUR TUJUAN PEMBELAJARAN (ATP) DAN ALOKASI WAKTU
 Petakan seluruh TP ke dalam urutan kronologis pembelajaran yang logis dari awal hingga akhir pertemuan. Setiap butir ATP memuat: urutanAlur (1, 2, 3...), kodeTP (misal 'TP.1'), rumusanTP, lingkupMateri yang spesifik, alokasiJP (angka bulat, total alokasiJP seluruh item ATP harus sama persis dengan total alokasi JP yang diinputkan guru), alokasiPertemuan (misal 'Pertemuan 1 (2 JP)' atau 'Pertemuan 2-3 (4 JP)'), rencanaAsesmen (formatif/sumatif), dan kegiatanPembelajaranInti.
 
 Kembalikan jawaban HANYA dalam format JSON sesuai skema.`;
@@ -140,7 +136,6 @@ const RESPONSE_SCHEMA = {
           },
           alasanLevel: { type: Type.STRING },
           buktiKetercapaian: { type: Type.STRING },
-          estimasiJP: { type: Type.INTEGER },
         },
         required: [
           'kode',
@@ -195,40 +190,6 @@ const RESPONSE_SCHEMA = {
         required: ['kodeTP', 'nilaiPancaCinta', 'rumusan', 'perilakuTeramati', 'penerapanKehidupan'],
       },
     },
-    integrasiKeislaman: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          jenisSumber: {
-            type: Type.STRING,
-            description: "Al-Qur'an|Hadis|Kitab Kuning",
-          },
-          rujukan: { type: Type.STRING },
-          teksArab: { type: Type.STRING },
-          terjemahanAtauMakna: { type: Type.STRING },
-          jenisIntegrasi: {
-            type: Type.STRING,
-            description: 'konseptual|nilai',
-          },
-          keterkaitan: { type: Type.STRING },
-          tingkatKeyakinan: {
-            type: Type.STRING,
-            description: 'tinggi|sedang|rendah',
-          },
-        },
-        required: [
-          'jenisSumber',
-          'rujukan',
-          'teksArab',
-          'terjemahanAtauMakna',
-          'jenisIntegrasi',
-          'keterkaitan',
-          'tingkatKeyakinan',
-        ],
-      },
-    },
-    catatanKejujuranSumber: { type: Type.STRING },
   },
   required: [
     'analisisCP',
@@ -238,8 +199,6 @@ const RESPONSE_SCHEMA = {
     'tujuanPembelajaran',
     'alurTujuanPembelajaran',
     'integrasiKBC',
-    'integrasiKeislaman',
-    'catatanKejujuranSumber',
   ],
 };
 
@@ -276,12 +235,15 @@ function parseAndFormatError(err: any): { message: string; isHighDemand: boolean
     code === 429 ||
     status === 'RESOURCE_EXHAUSTED' ||
     innerMsg.toLowerCase().includes('quota') ||
-    innerMsg.toLowerCase().includes('rate limit');
+    innerMsg.toLowerCase().includes('rate limit') ||
+    innerMsg.toLowerCase().includes('resource has been exhausted') ||
+    innerMsg.toLowerCase().includes('too many requests') ||
+    innerMsg.includes('429');
 
   if (isHighDemand) {
     return {
       message:
-        'Layanan AI Google saat ini sedang mengalami lonjakan antrean trafik tinggi (503 High Demand). Silakan klik "Coba Lagi" dalam beberapa detik.',
+        'Layanan AI Google saat ini sedang mengalami lonjakan antrean trafik tinggi (503 High Demand). Silakan coba kembali dalam beberapa detik.',
       isHighDemand: true,
       code: 503,
     };
@@ -290,7 +252,7 @@ function parseAndFormatError(err: any): { message: string; isHighDemand: boolean
   if (isRateLimited) {
     return {
       message:
-        'Batas frekuensi permintaan sementara tercapai (429 Rate Limit). Mohon tunggu beberapa detik sebelum mencoba kembali.',
+        'Batas frekuensi permintaan sementara tercapai (429 Rate Limit). Sistem sedang mengantrekan akses AI, silakan tunggu beberapa detik.',
       isHighDemand: false,
       code: 429,
     };
@@ -308,13 +270,15 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function callGeminiWithFallback(prompt: string, schema?: any) {
   // Sequence of approved models:
   // 1. gemini-3.8-flash (Primary text model)
-  // 2. gemini-3.1-flash-lite (Ultra-fast, resilient lightweight model)
+  // 2. gemini-3.1-flash-lite (Ultra-fast, lightweight model with separate throughput capacity)
   // 3. gemini-flash-latest (Alias pointing to available flash tier)
   const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
   let lastError: any = null;
 
-  for (const modelName of modelsToTry) {
+  for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
+    const modelName = modelsToTry[modelIdx];
     const maxRetriesForModel = 2;
+
     for (let attempt = 1; attempt <= maxRetriesForModel; attempt++) {
       try {
         console.log(`[Gemini] Memanggil model ${modelName} (Percobaan ${attempt}/${maxRetriesForModel})...`);
@@ -337,7 +301,18 @@ async function callGeminiWithFallback(prompt: string, schema?: any) {
           throw new Error(`Respons kosong diterima dari model ${modelName}`);
         }
 
-        const parsed = JSON.parse(text);
+        // Clean any markdown code blocks or wrapper text
+        let cleanText = text;
+        if (cleanText.startsWith('```')) {
+          cleanText = cleanText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+        }
+        const firstBrace = cleanText.indexOf('{');
+        const lastBrace = cleanText.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+        }
+
+        const parsed = JSON.parse(cleanText);
         console.log(`[Gemini] Berhasil memperoleh hasil dengan model: ${modelName}`);
         return { data: parsed, modelUsed: modelName };
       } catch (err: any) {
@@ -351,13 +326,20 @@ async function callGeminiWithFallback(prompt: string, schema?: any) {
 
         if (errInfo.isHighDemand || errInfo.code === 429) {
           if (attempt < maxRetriesForModel) {
-            const waitTime = attempt * 2000 + Math.floor(Math.random() * 1000);
+            // Generous exponential backoff for rate limits or high demand
+            const waitTime = attempt * 3500 + Math.floor(Math.random() * 1500);
             console.log(`[Gemini] Menunggu ${waitTime}ms sebelum mencoba ulang ${modelName}...`);
             await sleep(waitTime);
             continue;
+          } else {
+            // Before falling back to next model, pause briefly to let quota bucket recover
+            if (modelIdx < modelsToTry.length - 1) {
+              console.log(`[Gemini] Model ${modelName} melebihi batas kuota. Beralih ke model alternatif dalam 2.5s...`);
+              await sleep(2500);
+            }
           }
         } else {
-          // If non-transient, skip to next model
+          // If non-transient error, skip to next model
           break;
         }
       }
@@ -381,7 +363,7 @@ app.post('/api/rumuskan-tp', async (req, res) => {
       });
     }
 
-    const prompt = `Analisis Capaian Pembelajaran (CP) dan rumuskan Tujuan Pembelajaran (TP) madrasah secara komprehensif, jujur, dan bergradasi logis berdasarkan data berikut:
+    const prompt = `Analisis Capaian Pembelajaran (CP) dan rumuskan Tujuan Pembelajaran (TP) madrasah secara komprehensif, terstruktur, dan bergradasi logis berdasarkan data berikut:
 - Nama Madrasah: ${input.namaMadrasah || '(Tidak disebutkan)'}
 - Jenjang: ${input.jenjang}
 - Mata Pelajaran: ${input.mataPelajaran}
@@ -402,17 +384,92 @@ ${input.materiPokok}
 ${input.catatanGuru || 'Tidak ada catatan khusus.'}
 """
 
-Ikuti instruksi sistem secara disiplin. Pastikan rumusan TP logis, tidak berlebihan, terukur, level Bloom & SOLO tepat, KBC berbasis perilaku nyata yang dapat diamati, dan rujukan Al-Qur'an/Hadis/Kitab Kuning jujur secara akademis.`;
+Ikuti instruksi sistem secara disiplin. Pastikan rumusan TP logis, tidak berlebihan, terukur, level Bloom & SOLO tepat, serta KBC berbasis perilaku nyata yang dapat diamati peserta didik.`;
 
     const { data, modelUsed } = await callGeminiWithFallback(prompt, RESPONSE_SCHEMA);
+
+    // Sanitize TP: remove any obsolete estimasiJP property
+    if (Array.isArray(data.tujuanPembelajaran)) {
+      data.tujuanPembelajaran = data.tujuanPembelajaran.map((tp: any) => {
+        const { estimasiJP, ...rest } = tp;
+        return rest;
+      });
+    }
+
+    // Ensure Alur Tujuan Pembelajaran (ATP) is present, correctly numbered, and aligned with input JP
+    const totalTargetJP = Number(input.alokasiJP) || 8;
+    const totalTargetPertemuan = Number(input.alokasiPertemuan) || 3;
+
+    if (!Array.isArray(data.alurTujuanPembelajaran) || data.alurTujuanPembelajaran.length === 0) {
+      const tpList = data.tujuanPembelajaran || [];
+      const count = Math.max(1, tpList.length);
+      const baseJP = Math.floor(totalTargetJP / count);
+      let remainderJP = totalTargetJP % count;
+      let currentMeeting = 1;
+      const meetingsPerTP = Math.max(1, Math.round(totalTargetPertemuan / count));
+
+      data.alurTujuanPembelajaran = tpList.map((tp: any, idx: number) => {
+        const allocatedJP = baseJP + (remainderJP > 0 ? 1 : 0);
+        if (remainderJP > 0) remainderJP--;
+
+        const startMeeting = currentMeeting;
+        const endMeeting = Math.min(totalTargetPertemuan, currentMeeting + meetingsPerTP - 1);
+        currentMeeting = endMeeting + 1;
+
+        const pertemuanText =
+          startMeeting === endMeeting || endMeeting < startMeeting
+            ? `Pertemuan ${startMeeting}`
+            : `Pertemuan ${startMeeting}–${endMeeting}`;
+
+        const materiName =
+          data.analisisMateri && data.analisisMateri[idx]
+            ? data.analisisMateri[idx].submateri
+            : input.materiPokok;
+
+        return {
+          urutanAlur: idx + 1,
+          kodeTP: tp.kode || `TP.${idx + 1}`,
+          rumusanTP: tp.rumusan,
+          lingkupMateri: materiName,
+          alokasiJP: allocatedJP,
+          alokasiPertemuan: pertemuanText,
+          rencanaAsesmen: tp.buktiKetercapaian || 'Asesmen formatif observasi dan unjuk kerja.',
+          kegiatanPembelajaranInti: `Eksplorasi konsep dan praktik pemecahan masalah kontekstual pada materi ${materiName}.`,
+        };
+      });
+    } else {
+      // Ensure positive numeric JP and valid alur sequence
+      let runningSum = 0;
+      data.alurTujuanPembelajaran = data.alurTujuanPembelajaran.map((atp: any, idx: number) => {
+        const jp = Number(atp.alokasiJP) || Math.max(1, Math.floor(totalTargetJP / data.alurTujuanPembelajaran.length));
+        runningSum += jp;
+        return {
+          ...atp,
+          urutanAlur: atp.urutanAlur || idx + 1,
+          alokasiJP: jp,
+          alokasiPertemuan: atp.alokasiPertemuan || `Pertemuan ${idx + 1}`,
+        };
+      });
+
+      // Balance difference if runningSum differs from totalTargetJP
+      const diff = totalTargetJP - runningSum;
+      if (diff !== 0 && data.alurTujuanPembelajaran.length > 0) {
+        const lastIdx = data.alurTujuanPembelajaran.length - 1;
+        const adjusted = Math.max(1, data.alurTujuanPembelajaran[lastIdx].alokasiJP + diff);
+        data.alurTujuanPembelajaran[lastIdx].alokasiJP = adjusted;
+      }
+    }
+
     res.json({ success: true, data, modelUsed });
   } catch (error: any) {
     console.error('Error in /api/rumuskan-tp:', error);
     const formatted = parseAndFormatError(error);
-    res.status(formatted.code === 503 ? 503 : 500).json({
+    const statusCode = formatted.code === 503 ? 503 : formatted.code === 429 ? 429 : 500;
+    res.status(statusCode).json({
       success: false,
       error: formatted.message,
       isHighDemand: formatted.isHighDemand,
+      isRateLimited: formatted.code === 429,
     });
   }
 });
@@ -441,7 +498,7 @@ Kembalikan HANYA objek JSON dengan format:
     "konteksPenerapan": "",
     "potensiKarakter": ""
   }
-}`;
+} `;
       sectionSchema = {
         type: Type.OBJECT,
         properties: {
@@ -458,7 +515,7 @@ Kembalikan HANYA objek JSON dengan format:
 {
   "analisisMateri": [{ "urutan": 1, "tahap": "konsep dasar|keterkaitan konsep|penerapan|penalaran|pemecahan masalah|kreasi/komunikasi", "submateri": "", "deskripsi": "" }],
   "catatanTahapTidakDigunakan": ""
-}`;
+} `;
       sectionSchema = {
         type: Type.OBJECT,
         properties: {
@@ -477,7 +534,7 @@ Kembalikan HANYA objek JSON dengan format:
 {
   "pemilihanLevelKognitif": { "rentangBloom": "", "alasan": "" },
   "tujuanPembelajaran": [{ "kode": "TP.1", "gradasi": "awal|pengembangan|penerapan|penalaran/pemecahan masalah|pengembangan/transfer", "rumusan": "", "kko": "", "levelBloom": "C1-C6", "levelSOLO": "Unistructural|Multistructural|Relational|Extended Abstract", "alasanLevel": "", "buktiKetercapaian": "" }]
-}`;
+} `;
       sectionSchema = {
         type: Type.OBJECT,
         properties: {
@@ -507,7 +564,7 @@ Kembalikan HANYA objek JSON dengan format:
       "kegiatanPembelajaranInti": ""
     }
   ]
-}`;
+} `;
       sectionSchema = {
         type: Type.OBJECT,
         properties: {
@@ -522,31 +579,13 @@ Petunjuk khusus guru: ${instructions || 'Pastikan rumusan Panca Cinta memuat per
 Kembalikan HANYA objek JSON dengan format:
 {
   "integrasiKBC": [{ "kodeTP": "", "nilaiPancaCinta": [""], "rumusan": "", "perilakuTeramati": "", "penerapanKehidupan": "" }]
-}`;
+} `;
       sectionSchema = {
         type: Type.OBJECT,
         properties: {
           integrasiKBC: RESPONSE_SCHEMA.properties.integrasiKBC,
         },
         required: ['integrasiKBC'],
-      };
-    } else if (section === 'integrasiKeislaman') {
-      sectionPrompt = `Buat ulang HANYA bagian Integrasi Al-Qur'an / Hadis / Kitab Kuning (Bagian I) untuk topik:
-Materi: ${input.materiPokok}
-Mata Pelajaran: ${input.mataPelajaran} (${input.jenjang})
-Petunjuk khusus guru: ${instructions || 'Jaga kejujuran akademik mutlak. Jika teks Arab ragu, kosongkan teks Arab dan cantumkan rujukan serta maknanya.'}
-Kembalikan HANYA objek JSON dengan format:
-{
-  "integrasiKeislaman": [{ "jenisSumber": "Al-Qur'an|Hadis|Kitab Kuning", "rujukan": "", "teksArab": "", "terjemahanAtauMakna": "", "jenisIntegrasi": "konseptual|nilai", "keterkaitan": "", "tingkatKeyakinan": "tinggi|sedang|rendah" }],
-  "catatanKejujuranSumber": ""
-}`;
-      sectionSchema = {
-        type: Type.OBJECT,
-        properties: {
-          integrasiKeislaman: RESPONSE_SCHEMA.properties.integrasiKeislaman,
-          catatanKejujuranSumber: RESPONSE_SCHEMA.properties.catatanKejujuranSumber,
-        },
-        required: ['integrasiKeislaman', 'catatanKejujuranSumber'],
       };
     } else {
       return res.status(400).json({ error: 'Section tidak dikenali.' });
@@ -557,10 +596,12 @@ Kembalikan HANYA objek JSON dengan format:
   } catch (error: any) {
     console.error('Error in /api/regenerate-section:', error);
     const formatted = parseAndFormatError(error);
-    res.status(formatted.code === 503 ? 503 : 500).json({
+    const statusCode = formatted.code === 503 ? 503 : formatted.code === 429 ? 429 : 500;
+    res.status(statusCode).json({
       success: false,
       error: formatted.message,
       isHighDemand: formatted.isHighDemand,
+      isRateLimited: formatted.code === 429,
     });
   }
 });

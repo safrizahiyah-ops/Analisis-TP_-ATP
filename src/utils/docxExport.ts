@@ -234,32 +234,6 @@ export async function exportToWordDocx(input: FormInputData, data: HasilPerumusa
     ),
   ];
 
-  // Table I: Keislaman
-  const tableIRows: TableRow[] = [
-    new TableRow({
-      tableHeader: true,
-      children: [
-        createHeaderCell('Sumber & Rujukan', 20),
-        createHeaderCell('Teks Arab & Terjemahan', 42),
-        createHeaderCell('Integrasi', 14),
-        createHeaderCell('Keterkaitan Materi', 16),
-        createHeaderCell('Keyakinan', 8),
-      ],
-    }),
-    ...data.integrasiKeislaman.map(
-      (s) =>
-        new TableRow({
-          children: [
-            createCell(`${s.jenisSumber}\n${s.rujukan}`, 20, AlignmentType.LEFT, true),
-            createCell(`${s.teksArab ? s.teksArab + '\n\n' : ''}Artinya: "${s.terjemahanAtauMakna}"`, 42),
-            createCell(s.jenisIntegrasi, 14, AlignmentType.CENTER),
-            createCell(s.keterkaitan, 16),
-            createCell(s.tingkatKeyakinan, 8, AlignmentType.CENTER),
-          ],
-        })
-    ),
-  ];
-
   const totalJP = data.tujuanPembelajaran.reduce((acc, curr) => acc + (curr.estimasiJP || 0), 0);
 
   const doc = new Document({
@@ -303,7 +277,7 @@ export async function exportToWordDocx(input: FormInputData, data: HasilPerumusa
             alignment: AlignmentType.CENTER,
             children: [
               new TextRun({
-                text: 'Terintegrasi Taksonomi Bloom Revisi, SOLO, Kurikulum Berbasis Cinta (KBC), dan Nilai Keislaman',
+                text: 'Terintegrasi Taksonomi Bloom Revisi, SOLO, dan Kurikulum Berbasis Cinta (KBC)',
                 italics: true,
                 size: 18,
                 color: '666666',
@@ -489,40 +463,6 @@ export async function exportToWordDocx(input: FormInputData, data: HasilPerumusa
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: tableHRows,
-          }),
-          new Paragraph({ text: '' }),
-
-          // Bagian I
-          new Paragraph({
-            heading: HeadingLevel.HEADING_2,
-            children: [
-              new TextRun({
-                text: "I. Integrasi Al-Qur'an, Hadis, dan Kitab Kuning",
-                bold: true,
-                color: '047857',
-              }),
-            ],
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: "PERINGATAN AKADEMIK: Verifikasi teks Arab, nomor ayat, dan terjemahan dengan Qur'an Kemenag (quran.kemenag.go.id) atau kitab asli sebelum digunakan.",
-                bold: true,
-                color: 'B91C1C',
-              }),
-            ],
-          }),
-          data.catatanKejujuranSumber
-            ? new Paragraph({
-                children: [
-                  new TextRun({ text: 'Catatan Integritas Rujukan: ', bold: true }),
-                  new TextRun({ text: data.catatanKejujuranSumber, italics: true }),
-                ],
-              })
-            : new Paragraph({ text: '' }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: tableIRows,
           }),
           new Paragraph({ text: '' }),
           new Paragraph({ text: '' }),

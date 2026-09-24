@@ -1,10 +1,12 @@
-import React from 'react';
-import { BookOpen, History, Sparkles, BookMarked, Printer } from 'lucide-react';
+import React, { useState } from 'react';
+import { BookOpen, History, Sparkles, BookMarked, Printer, Download, Copy, Check } from 'lucide-react';
 
 interface HeaderProps {
   onOpenHistory: () => void;
   savedCount: number;
   onPrintPreview?: () => void;
+  onDownloadWord?: () => void;
+  onCopyDoc?: () => void;
   hasResult?: boolean;
 }
 
@@ -12,8 +14,20 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenHistory,
   savedCount,
   onPrintPreview,
+  onDownloadWord,
+  onCopyDoc,
   hasResult,
 }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleHeaderCopy = () => {
+    if (onCopyDoc) {
+      onCopyDoc();
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <header className="bg-emerald-900 text-white shadow-md border-b border-emerald-800/80 sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -39,16 +53,42 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Quick Actions */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            {hasResult && onPrintPreview && (
-              <button
-                onClick={onPrintPreview}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg bg-emerald-800/70 text-emerald-100 hover:bg-emerald-800 hover:text-white border border-emerald-700 transition"
-                title="Pratinjau Cetak / Ekspor PDF"
-              >
-                <Printer className="w-4 h-4 text-emerald-300" />
-                <span>Cetak / PDF</span>
-              </button>
+          <div className="flex items-center space-x-1.5 sm:space-x-2.5">
+            {hasResult && (
+              <>
+                {onDownloadWord && (
+                  <button
+                    onClick={onDownloadWord}
+                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg bg-emerald-800/90 text-emerald-100 hover:bg-emerald-700 hover:text-white border border-emerald-700 transition active:scale-95"
+                    title="Unduh dokumen dalam format Word (.docx)"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-300" />
+                    <span className="hidden sm:inline">Word</span>
+                  </button>
+                )}
+
+                {onPrintPreview && (
+                  <button
+                    onClick={onPrintPreview}
+                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg bg-emerald-800/90 text-emerald-100 hover:bg-emerald-700 hover:text-white border border-emerald-700 transition active:scale-95"
+                    title="Pratinjau Cetak / Ekspor PDF"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-amber-300" />
+                    <span className="hidden sm:inline">PDF</span>
+                  </button>
+                )}
+
+                {onCopyDoc && (
+                  <button
+                    onClick={handleHeaderCopy}
+                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold rounded-lg bg-emerald-800/90 text-emerald-100 hover:bg-emerald-700 hover:text-white border border-emerald-700 transition active:scale-95"
+                    title="Salin Dokumen Lengkap"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5 text-amber-300" />}
+                    <span className="hidden sm:inline">{copied ? 'Tersalin' : 'Copy'}</span>
+                  </button>
+                )}
+              </>
             )}
 
             <button

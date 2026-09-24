@@ -9,9 +9,9 @@ const STEPS = [
   { id: 1, label: 'Menganalisis CP', desc: 'Membedah kompetensi, pengetahuan, keterampilan, & kompleksitas' },
   { id: 2, label: 'Menganalisis materi', desc: 'Menyusun alur tahapan submateri konsep hingga pemecahan masalah' },
   { id: 3, label: 'Menentukan level kognitif', desc: 'Menyelaraskan Taksonomi Bloom Revisi & Taksonomi SOLO' },
-  { id: 4, label: 'Merumuskan TP', desc: 'Menyusun TP bergradasi logis, satu KKO terukur, & estimasi JP' },
-  { id: 5, label: 'Mengintegrasikan KBC', desc: 'Menghubungkan Panca Cinta dengan perilaku teramati peserta didik' },
-  { id: 6, label: 'Menelusuri sumber keislaman', desc: 'Mengintegrasikan Al-Qur\'an, Hadis, & Kitab Kuning dengan jujur' },
+  { id: 4, label: 'Merumuskan TP', desc: 'Menyusun rumusan TP bergradasi satu KKO terukur & kriteria asesmen' },
+  { id: 5, label: 'Menyusun Alur TP (ATP)', desc: 'Memetakan sekuens pembelajaran kronologis & distribusi alokasi JP' },
+  { id: 6, label: 'Mengintegrasikan KBC', desc: 'Menghubungkan Panca Cinta dengan perilaku teramati peserta didik' },
 ];
 
 export const ProcessIndicator: React.FC<ProcessIndicatorProps> = ({ isLoading }) => {

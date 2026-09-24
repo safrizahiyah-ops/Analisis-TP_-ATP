@@ -119,8 +119,8 @@ export interface HasilPerumusanTP {
   tujuanPembelajaran: TujuanPembelajaranItem[];
   alurTujuanPembelajaran?: AlurTujuanPembelajaranItem[];
   integrasiKBC: IntegrasiKBCItem[];
-  integrasiKeislaman: IntegrasiKeislamanItem[];
-  catatanKejujuranSumber: string;
+  integrasiKeislaman?: IntegrasiKeislamanItem[];
+  catatanKejujuranSumber?: string;
 }
 
 export interface RiwayatDokumen {
